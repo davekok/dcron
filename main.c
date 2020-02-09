@@ -2,7 +2,7 @@
 /*
  * MAIN.C
  *
- * crond [-s dir] [-c dir] [-t dir] [-m user@host] [-M mailer] [-S|-L [file]] [-l level] [-b|-f|-d]
+ * crond [-s dir] [-c dir] [-t dir] [-m user@host|file] [-M mailer] [-S|-L [file]] [-l level] [-b|-f|-d] [-C]
  * run as root, but NOT setuid root
  *
  * Copyright 1994 Matthew Dillon (dillon@apollo.backplane.com)
@@ -34,6 +34,8 @@ short LogLevel = LOG_LEVEL;
 short ForegroundOpt = 0;
 short SyslogOpt = 1;
 short CreateCronDirsOpt = 0;
+short ListenPort = 9000;
+int   PassiveSocketFD;
 const char *CDir = CRONTABS;
 const char *SCDir = SCRONTABS;
 const char *TSDir = CRONSTAMPS;
@@ -50,6 +52,10 @@ pid_t DaemonPid;
 int
 main(int ac, char **av)
 {
+	for (int i = 0; i < ac; ++i) {
+		printf("%s\n", av[i]);
+	}
+
 	const char *LevelAry[] = {
 		"emerg",
 		"alert",
@@ -327,6 +333,35 @@ main(int ac, char **av)
 		close(i);
 	}
 
+	/* Create socket and start listening for connections. */
+	{
+		struct sockaddr_in sa;
+		PassiveSocketFD = socket(PF_INET, SOCK_STREAM|SOCK_CLOEXEC, IPPROTO_TCP);
+		if (-1 == PassiveSocketFD) {
+			printlogf(LOG_CRIT, "socket: %s\n", strerror(errno));
+			exit(1);
+		}
+		i = 1;
+		if (-1 == setsockopt(PassiveSocketFD, SOL_SOCKET, SO_REUSEADDR, &i, sizeof i)) {
+			printlogf(LOG_CRIT, "setsockopt: %s\n", strerror(errno));
+			close(PassiveSocketFD);
+			exit(1);
+		}
+		memset(&sa, 0, sizeof sa);
+		sa.sin_family = AF_INET;
+		sa.sin_port = htons(ListenPort);
+		sa.sin_addr.s_addr = htonl(INADDR_ANY);
+		if (-1 == bind(PassiveSocketFD, (struct sockaddr *)&sa, sizeof sa)) {
+			printlogf(LOG_CRIT, "listen: %s\n", strerror(errno));
+			close(PassiveSocketFD);
+			exit(1);
+		}
+		if (-1 == listen(PassiveSocketFD, 10)) {
+			printlogf(LOG_CRIT, "listen: %s\n", strerror(errno));
+			close(PassiveSocketFD);
+			exit(1);
+		}
+	}
 
 	/*
 	 * main loop - synchronize to 1 second after the minute, minimum sleep
@@ -345,9 +380,25 @@ main(int ac, char **av)
 		long dt;
 		short rescan = 60;
 		short stime = 60;
+		int nfds = 2, afd;
+		fd_set readfds, writefds, exceptfds;
+		struct timeval timeout;
 
 		for (;;) {
-			sleep((stime + 1) - (short)(time(NULL) % stime));
+			timeout.tv_sec = (stime + 1) - (short)(time(NULL) % stime);
+			timeout.tv_usec = 0;
+			FD_ZERO(&readfds);
+			FD_ZERO(&writefds);
+			FD_ZERO(&exceptfds);
+			FD_SET(PassiveSocketFD, &readfds);
+			afd = select(nfds, &readfds, &writefds, &exceptfds, &timeout);
+			if (afd == -1) {
+				if (errno != EINTR && DebugOpt) {
+					printlogf(LOG_DEBUG, "Select syscall: %s\n", strerror(errno));
+				}
+			} else if (afd > 0) {
+				HandleConnection(PassiveSocketFD);
+			}
 
 			if (Quit) {
 				fdprintf(2, "\n"); // print new line in case of Ctrl-C
@@ -411,4 +462,3 @@ main(int ac, char **av)
 		}
 	}
 }
-

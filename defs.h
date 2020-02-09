@@ -25,6 +25,10 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <sys/resource.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
