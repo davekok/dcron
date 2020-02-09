@@ -20,7 +20,7 @@ int GetReplaceStream(const char *user, const char *file);
 void EditFile(const char *user, const char *file);
 
 const char *CDir = CRONTABS;
-int   UserId;
+int UserId;
 
 
 int
@@ -49,22 +49,25 @@ main(int ac, char **av)
 	while ((i=getopt(ac,av,"ledu:c:")) != -1) {
 		switch(i) {
 			case 'l':
-				if (option != NONE)
+				if (option != NONE) {
 					Usage();
-				else
+				} else {
 					option = LIST;
+				}
 				break;
 			case 'e':
-				if (option != NONE)
+				if (option != NONE) {
 					Usage();
-				else
+				} else {
 					option = EDIT;
+				}
 				break;
 			case 'd':
-				if (option != NONE)
+				if (option != NONE) {
 					Usage();
-				else
+				} else {
 					option = DELETE;
+				}
 				break;
 			case 'u':
 				/* getopt guarantees optarg != 0 here */
@@ -173,8 +176,9 @@ main(int ac, char **av)
 				if ((fd = mkstemp(tmp)) >= 0) {
 					chown(tmp, getuid(), getgid());
 					if ((fi = fopen(pas->pw_name, "r"))) {
-						while ((n = fread(buf, 1, sizeof(buf), fi)) > 0)
+						while ((n = fread(buf, 1, sizeof(buf), fi)) > 0) {
 							write(fd, buf, n);
+						}
 					}
 					EditFile(caller, tmp);
 					remove(tmp);
@@ -316,8 +320,9 @@ GetReplaceStream(const char *user, const char *file)
 
 	close(filedes[0]);
 
-	if (ChangeUser(user, NULL) < 0)
+	if (ChangeUser(user, NULL) < 0) {
 		exit(0);
+	}
 
 	fd = open(file, O_RDONLY);
 	if (fd < 0) {
@@ -344,16 +349,20 @@ EditFile(const char *user, const char *file)
 		const char *ptr;
 		char visual[SMALL_BUFFER];
 
-		if (ChangeUser(user, TMPDIR) < 0)
+		if (ChangeUser(user, TMPDIR) < 0) {
 			exit(0);
-		if ((ptr = getenv("EDITOR")) == NULL || strlen(ptr) >= sizeof(visual))
-			if ((ptr = getenv("VISUAL")) == NULL || strlen(ptr) >= sizeof(visual))
+		}
+		if ((ptr = getenv("EDITOR")) == NULL || strlen(ptr) >= sizeof(visual)) {
+			if ((ptr = getenv("VISUAL")) == NULL || strlen(ptr) >= sizeof(visual)) {
 				ptr = PATH_VI;
+			}
+		}
 
 		/* [v]snprintf write at most size including \0; they'll null-terminate, even when they truncate */
 		/* return value >= size means result was truncated */
-		if (snprintf(visual, sizeof(visual), "%s %s", ptr, file) < sizeof(visual))
+		if (snprintf(visual, sizeof(visual), "%s %s", ptr, file) < sizeof(visual)) {
 			execl("/bin/sh", "/bin/sh", "-c", visual, NULL);
+		}
 		printlogf(0, "couldn't exec %s", visual);
 		exit(1);
 	}

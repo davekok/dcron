@@ -125,24 +125,25 @@ CheckUpdates(const char *dpath, const char *user_override, time_t t1, time_t t2)
 			 */
 			fname = strtok_r(buf, " \t\n", &ptok);
 
-			if (user_override)
+			if (user_override) {
 				SynchronizeFile(dpath, fname, user_override);
-			else if (!getpwnam(fname))
+			} else if (!getpwnam(fname)) {
 				printlogf(LOG_WARNING, "ignoring %s/%s (non-existent user)\n", dpath, fname);
-			else if (*ptok == 0 || *ptok == '\n') {
+			} else if (*ptok == 0 || *ptok == '\n') {
 				SynchronizeFile(dpath, fname, fname);
 				ReadTimestamps(fname);
 			} else {
 				/* if fname is followed by whitespace, we prod any following jobs */
 				CronFile *file = FileBase;
 				while (file) {
-					if (strcmp(file->cf_UserName, fname) == 0)
+					if (strcmp(file->cf_UserName, fname) == 0) {
 						break;
+					}
 					file = file->cf_Next;
 				}
-				if (!file)
+				if (!file) {
 					printlogf(LOG_WARNING, "unable to prod for user %s: no crontab\n", fname);
-				else {
+				} else {
 					CronLine *line;
 					/* calling strtok(ptok...) then strtok(NULL) is equiv to calling strtok_r(NULL,..&ptok) */
 					while ((job = strtok(ptok, " \t\n")) != NULL) {
@@ -154,13 +155,14 @@ CheckUpdates(const char *dpath, const char *user_override, time_t t1, time_t t2)
 						}
 						line = file->cf_LineBase;
 						while (line) {
-							if (line->cl_JobName && strcmp(line->cl_JobName, job) == 0)
+							if (line->cl_JobName && strcmp(line->cl_JobName, job) == 0) {
 								break;
+							}
 							line = line->cl_Next;
 						}
-						if (line)
+						if (line) {
 							ArmJob(file, line, t1, force);
-						else {
+						} else {
 							printlogf(LOG_WARNING, "unable to prod for user %s: unknown job %s\n", fname, job);
 							/* we can continue parsing this line, we just don't install any CronWaiter for the requested job */
 						}
@@ -182,8 +184,9 @@ SynchronizeDir(const char *dpath, const char *user_override, int initial_scan)
 	DIR *dir;
 	char *path;
 
-	if (DebugOpt)
+	if (DebugOpt) {
 		printlogf(LOG_DEBUG, "Synchronizing %s\n", dpath);
+	}
 
 	/*
 	 * Delete all database CronFiles for this directory.  DeleteFile() will
@@ -216,10 +219,12 @@ SynchronizeDir(const char *dpath, const char *user_override, int initial_scan)
 	 */
 	if ((dir = opendir(dpath)) != NULL) {
 		while ((den = readdir(dir)) != NULL) {
-			if (strchr(den->d_name, '.') != NULL)
+			if (strchr(den->d_name, '.') != NULL) {
 				continue;
-			if (strcmp(den->d_name, CRONUPDATE) == 0)
+			}
+			if (strcmp(den->d_name, CRONUPDATE) == 0) {
 				continue;
+			}
 			if (user_override) {
 				SynchronizeFile(dpath, den->d_name, user_override);
 			} else if (getpwnam(den->d_name)) {
@@ -231,9 +236,10 @@ SynchronizeDir(const char *dpath, const char *user_override, int initial_scan)
 		}
 		closedir(dir);
 	} else {
-		if (initial_scan)
+		if (initial_scan) {
 			printlogf(LOG_ERR, "unable to scan directory %s\n", dpath);
 			/* softerror, do not exit the program */
+		}
 	}
 }
 
@@ -292,14 +298,18 @@ ReadTimestamps(const char *user)
 						printlogf(LOG_NOTICE, "no timestamp found (user %s job %s)\n", file->cf_UserName, line->cl_JobName);
 						/* write a fake timestamp file so our initial NotUntil doesn't keep being reset every hour when crond does a SynchronizeDir */
 						if ((fi = fopen(line->cl_Timestamp, "w")) != NULL) {
-							if (strftime(buf, sizeof(buf), CRONSTAMP_FMT, localtime(&line->cl_NotUntil)))
-								if (fputs("after ", fi) >= 0)
-									if (fputs(buf,fi) >= 0)
+							if (strftime(buf, sizeof(buf), CRONSTAMP_FMT, localtime(&line->cl_NotUntil))) {
+								if (fputs("after ", fi) >= 0) {
+									if (fputs(buf,fi) >= 0) {
 										succeeded = 1;
+									}
+								}
+							}
 							fclose(fi);
 						}
-						if (!succeeded)
+						if (!succeeded) {
 							printlogf(LOG_WARNING, "unable to write timestamp to %s (user %s %s)\n", line->cl_Timestamp, file->cf_UserName, line->cl_Description);
+						}
 					}
 				}
 				line = line->cl_Next;
@@ -323,10 +333,11 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 	/*
 	 * Limit entries
 	 */
-	if (strcmp(userName, "root") == 0)
+	if (strcmp(userName, "root") == 0) {
 		maxEntries = 65535;
-	else
+	} else {
 		maxEntries = MAXLINES;
+	}
 	maxLines = maxEntries * 10;
 
 	/*
@@ -334,9 +345,10 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 	 */
 	pfile = &FileBase;
 	while ((file = *pfile) != NULL) {
-		if (file->cf_Deleted == 0 && strcmp(file->cf_DPath, dpath) == 0 &&
-				strcmp(file->cf_FileName, fileName) == 0
-		   ) {
+		if (file->cf_Deleted == 0
+				&& strcmp(file->cf_DPath, dpath) == 0
+				&& strcmp(file->cf_FileName, fileName) == 0)
+		{
 			DeleteFile(pfile);
 		} else {
 			pfile = &file->cf_Next;
@@ -368,23 +380,28 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 				char *ptr = buf;
 				int len;
 
-				while (*ptr == ' ' || *ptr == '\t' || *ptr == '\n')
+				while (*ptr == ' ' || *ptr == '\t' || *ptr == '\n') {
 					++ptr;
+				}
 
 				len = strlen(ptr);
-				if (len && ptr[len-1] == '\n')
+				if (len && ptr[len-1] == '\n') {
 					ptr[--len] = 0;
+				}
 
-				if (*ptr == 0 || *ptr == '#')
+				if (*ptr == 0 || *ptr == '#') {
 					continue;
+				}
 
-				if (--maxEntries == 0)
+				if (--maxEntries == 0) {
 					break;
+				}
 
 				memset(&line, 0, sizeof(line));
 
-				if (DebugOpt)
+				if (DebugOpt) {
 					printlogf(LOG_DEBUG, "User %s Entry %s\n", userName, buf);
+				}
 
 				if (*ptr == '@') {
 					/*
@@ -446,19 +463,24 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 						if (line.cl_Delay == 0)
 							line.cl_Delay = 60;
 						/* all minutes are permitted */
-						for (j=0; j<60; ++j)
+						for (j=0; j<60; ++j) {
 							line.cl_Mins[j] = 1;
-						for (j=0; j<24; ++j)
+						}
+						for (j=0; j<24; ++j) {
 							line.cl_Hrs[j] = 1;
-						for (j=1; j<32; ++j)
+						}
+						for (j=1; j<32; ++j) {
 							/* days are numbered 1..31 */
 							line.cl_Days[j] = 1;
-						for (j=0; j<12; ++j)
+						}
+						for (j=0; j<12; ++j) {
 							line.cl_Mons[j] = 1;
+						}
 					}
 
-					while (*ptr == ' ' || *ptr == '\t')
+					while (*ptr == ' ' || *ptr == '\t') {
 						++ptr;
+					}
 
 				} else {
 					/*
@@ -479,8 +501,9 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 					 * check failure
 					 */
 
-					if (ptr == NULL)
+					if (ptr == NULL) {
 						continue;
+					}
 
 					/*
 					 * fix days and dow - if one is not * and the other
@@ -510,8 +533,9 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 								exit(1);
 							}
 							line.cl_JobName = line.cl_Description + 4;
-							if (!ptr)
+							if (!ptr) {
 								printlogf(LOG_WARNING, "failed parsing crontab for user %s: no command after %s%s\n", userName, ID_TAG, line.cl_JobName);
+							}
 						}
 					} else if (strncmp(ptr, FREQ_TAG, strlen(FREQ_TAG)) == 0) {
 						if (line.cl_Freq) {
@@ -522,10 +546,11 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 							char *base = ptr;
 							ptr += strlen(FREQ_TAG);
 							ptr = ParseInterval(&line.cl_Freq, ptr);
-							if (ptr && *ptr == '/')
+							if (ptr && *ptr == '/') {
 								ptr = ParseInterval(&line.cl_Delay, ++ptr);
-							else
+							} else {
 								line.cl_Delay = line.cl_Freq;
+							}
 							if (!ptr) {
 								printlogf(LOG_WARNING, "failed parsing crontab for user %s: %s\n", userName, base);
 							} else if (*ptr != ' ' && *ptr != '\t') {
@@ -544,9 +569,9 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 							ptr += strlen(WAIT_TAG);
 							do {
 								CronLine *job, **pjob;
-								if (strcspn(ptr,",") < strcspn(ptr," \t"))
+								if (strcspn(ptr,",") < strcspn(ptr," \t")) {
 									name = strsep(&ptr, ",");
-								else {
+								} else {
 									more = 0;
 									name = strsep(&ptr, " \t");
 								}
@@ -563,9 +588,10 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 										if (!w || *w != 0) {
 											printlogf(LOG_WARNING, "failed parsing crontab for user %s: %s%s\n", userName, WAIT_TAG, name);
 											ptr = NULL;
-										} else
+										} else {
 											/* truncate name */
 											*wsave = 0;
+										}
 									}
 									if (ptr) {
 										/* look for a matching CronLine */
@@ -584,8 +610,9 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 												notif->cn_Next = job->cl_Notifs;	/* add to head of job->cl_Notifs */
 												job->cl_Notifs = notif;
 												break;
-											} else
+											} else {
 												pjob = &job->cl_Next;
+											}
 										}
 										if (!job) {
 											printlogf(LOG_WARNING, "failed parsing crontab for user %s: unknown job %s\n", userName, name);
@@ -595,12 +622,15 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 								}
 							} while (ptr && more);
 						}
-					} else
+					} else {
 						break;
-					if (!ptr)
+					}
+					if (!ptr) {
 						break;
-					while (*ptr == ' ' || *ptr == '\t')
+					}
+					while (*ptr == ' ' || *ptr == '\t') {
 						++ptr;
+					}
 				} while (!line.cl_JobName || !line.cl_Waiters || !line.cl_Freq);
 
 				if (line.cl_JobName && (!ptr || *line.cl_JobName == 0)) {
@@ -644,13 +674,15 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 				}
 
 				if (line.cl_JobName) {
-					if (DebugOpt)
+					if (DebugOpt) {
 						printlogf(LOG_DEBUG, "    Command %s Job %s\n\n", line.cl_Shell, line.cl_JobName);
+					}
 				} else {
 					/* when cl_JobName is NULL, we point cl_Description to cl_Shell */
 					line.cl_Description = line.cl_Shell;
-					if (DebugOpt)
+					if (DebugOpt) {
 						printlogf(LOG_DEBUG, "    Command %s\n\n", line.cl_Shell);
+					}
 				}
 
 				*pline = calloc(1, sizeof(CronLine));
@@ -665,8 +697,9 @@ SynchronizeFile(const char *dpath, const char *fileName, const char *userName)
 			file->cf_Next = FileBase;
 			FileBase = file;
 
-			if (maxLines == 0 || maxEntries == 0)
+			if (maxLines == 0 || maxEntries == 0) {
 				printlogf(LOG_WARNING, "maximum number of lines reached for user %s\n", userName);
+			}
 		}
 		fclose(fi);
 	}
@@ -677,7 +710,7 @@ char *
 ParseInterval(int *interval, char *ptr)
 {
 	int n = 0;
-	if (ptr && *ptr >= '0' && *ptr <= '9' && (n = strtol(ptr, &ptr, 10)) > 0)
+	if (ptr && *ptr >= '0' && *ptr <= '9' && (n = strtol(ptr, &ptr, 10)) > 0) {
 		switch (*ptr) {
 			case 'm':
 				n *= 60;
@@ -694,11 +727,13 @@ ParseInterval(int *interval, char *ptr)
 			default:
 				n = 0;
 		}
+	}
 	if (n > 0) {
 		*interval = n;
 		return (ptr+1);
-	} else
+	} else {
 		return (NULL);
+	}
 }
 
 char *
@@ -708,8 +743,9 @@ ParseField(char *user, char *ary, int modvalue, int offset, int onvalue, const c
 	int n1 = -1;
 	int n2 = -1;
 
-	if (base == NULL)
+	if (base == NULL) {
 		return (NULL);
+	}
 
 	while (*ptr != ' ' && *ptr != '\t' && *ptr != '\n') {
 		int skip = 0;
@@ -724,10 +760,11 @@ ParseField(char *user, char *ary, int modvalue, int offset, int onvalue, const c
 			skip = 1;
 			++ptr;
 		} else if (*ptr >= '0' && *ptr <= '9') {
-			if (n1 < 0)
+			if (n1 < 0) {
 				n1 = strtol(ptr, &ptr, 10) + offset;
-			else
+			} else {
 				n2 = strtol(ptr, &ptr, 10) + offset;
+			}
 			skip = 1;
 		} else if (names) {
 			int i;
@@ -739,10 +776,11 @@ ParseField(char *user, char *ary, int modvalue, int offset, int onvalue, const c
 			}
 			if (names[i]) {
 				ptr += strlen(names[i]);
-				if (n1 < 0)
+				if (n1 < 0) {
 					n1 = i;
-				else
+				} else {
 					n2 = i;
+				}
 				skip = 1;
 			}
 		}
@@ -765,13 +803,15 @@ ParseField(char *user, char *ary, int modvalue, int offset, int onvalue, const c
 		 * in the character array appropriately.
 		 */
 
-		if (n2 < 0)
+		if (n2 < 0) {
 			n2 = n1;
+		}
 
 		n2 = n2 % modvalue;
 
-		if (*ptr == '/')
+		if (*ptr == '/') {
 			skip = strtol(ptr + 1, &ptr, 10);
+		}
 
 		/*
 		 * fill array, using a failsafe is the easiest way to prevent
@@ -797,8 +837,9 @@ ParseField(char *user, char *ary, int modvalue, int offset, int onvalue, const c
 				return(NULL);
 			}
 		}
-		if (*ptr != ',')
+		if (*ptr != ',') {
 			break;
+		}
 		++ptr;
 		n1 = -1;
 		n2 = -1;
@@ -809,17 +850,20 @@ ParseField(char *user, char *ary, int modvalue, int offset, int onvalue, const c
 		return(NULL);
 	}
 
-	while (*ptr == ' ' || *ptr == '\t' || *ptr == '\n')
+	while (*ptr == ' ' || *ptr == '\t' || *ptr == '\n') {
 		++ptr;
+	}
 
 	if (DebugOpt) {
 		int i;
 
-		for (i = 0; i < modvalue; ++i)
-			if (modvalue == FIELD_W_DAYS)
+		for (i = 0; i < modvalue; ++i) {
+			if (modvalue == FIELD_W_DAYS) {
 				printlogf(LOG_DEBUG, "%2x ", ary[i]);
-			else
+			} else {
 				printlogf(LOG_DEBUG, "%d", ary[i]);
+			}
+		}
 		printlogf(LOG_DEBUG, "\n");
 	}
 
@@ -860,25 +904,28 @@ FixDayDow(CronLine *line)
 	}
 
 	/* When cases 1, 2 or 3 there is nothing left to do */
-	if (DowStar || DomStar)
+	if (DowStar || DomStar) {
 		return;
+	}
 
 	/* Set individual bits within the DoW mask... */
 	for (i = 0; i < arysize(line->cl_Days); ++i) {
 		if (line->cl_Days[i]) {
-			if (i < 6)
+			if (i < 6) {
 				mask |= 1 << (i - 1);
-			else
+			} else {
 				mask |= LAST_DOW;
+			}
 		}
 	}
 
 	/* and apply the mask to each DoW element */
 	for (i = 0; i < arysize(line->cl_Dow); ++i) {
-		if (line->cl_Dow[i])
+		if (line->cl_Dow[i]) {
 			line->cl_Dow[i] = mask;
-		else
+		} else {
 			line->cl_Dow[i] = 0;
+		}
 	}
 
 	/* case 4 relies on the DoW value to guard the date instead of using the
@@ -915,13 +962,15 @@ DeleteFile(CronFile **pfile)
 			*pline = line->cl_Next;
 			free(line->cl_Shell);
 
-			if (line->cl_JobName)
+			if (line->cl_JobName) {
 				/* this frees both cl_Description and cl_JobName
 				 * if cl_JobName is NULL, Description pointed to ch_Shell, which was already freed
 				 */
 				free(line->cl_Description);
-			if (line->cl_Timestamp)
+			}
+			if (line->cl_Timestamp) {
 				free(line->cl_Timestamp);
+			}
 
 			pnotifs = &line->cl_Notifs;
 			while ((notifs = *pnotifs) != NULL) {
@@ -971,8 +1020,9 @@ TestJobs(time_t t1, time_t t2)
 
 	PrintFile(FileBase, "TestJobs()", __FILE__, __LINE__);
 	for (file = FileBase; file; file = file->cf_Next) {
-		if (file->cf_Deleted)
+		if (file->cf_Deleted) {
 			continue;
+		}
 		for (line = file->cf_LineBase; line; line = line->cl_Next) {
 			struct CronWaiter *waiter;
 
@@ -985,18 +1035,21 @@ TestJobs(time_t t1, time_t t2)
 						/* notifier exited unsuccessfully */
 						ready = 2;
 						break;
-					} else if (waiter->cw_Flag < 0)
+					} else if (waiter->cw_Flag < 0) {
 						/* still waiting, notifier hasn't run to completion */
 						ready = 0;
+					}
 					waiter = waiter->cw_Next;
 				}
 				if (ready == 2) {
-					if (DebugOpt)
+					if (DebugOpt) {
 						printlogf(LOG_DEBUG, "cancelled waiting: user %s %s\n", file->cf_UserName, line->cl_Description);
+					}
 					line->cl_Pid = JOB_NONE;
 				} else if (ready) {
-					if (DebugOpt)
+					if (DebugOpt) {
 						printlogf(LOG_DEBUG, "finished waiting: user %s %s\n", file->cf_UserName, line->cl_Description);
+					}
 					nJobs += ArmJob(file, line, 0, -1);
 					/*
 					 if (line->cl_NotUntil)
@@ -1019,22 +1072,25 @@ TestJobs(time_t t1, time_t t2)
 			if (n_wday >= FOURTH_DOW) {
 				struct tm tnext = *tp;
 				tnext.tm_mday += 7;
-				if (mktime(&tnext) != (time_t)-1 && tnext.tm_mon != tp->tm_mon)
+				if (mktime(&tnext) != (time_t)-1 && tnext.tm_mon != tp->tm_mon) {
 					n_wday |= LAST_DOW;	/* last dow in month is always recognized as 6th bit */
+				}
 			}
 
 			for (file = FileBase; file; file = file->cf_Next) {
-				if (file->cf_Deleted)
+				if (file->cf_Deleted) {
 					continue;
+				}
 				for (line = file->cf_LineBase; line; line = line->cl_Next) {
 					if ((line->cl_Pid == JOB_WAITING || line->cl_Pid == JOB_NONE) && (line->cl_Freq == 0 || (line->cl_Freq > 0 && t2 >= line->cl_NotUntil))) {
 						/* (re)schedule job? */
-						if (line->cl_Mins[tp->tm_min] &&
-								line->cl_Hrs[tp->tm_hour] &&
-								(line->cl_Days[tp->tm_mday] && n_wday & line->cl_Dow[tp->tm_wday])
-						   ) {
-							if (line->cl_NotUntil)
+						if (line->cl_Mins[tp->tm_min]
+								&& line->cl_Hrs[tp->tm_hour]
+								&& (line->cl_Days[tp->tm_mday] && n_wday & line->cl_Dow[tp->tm_wday]))
+						{
+							if (line->cl_NotUntil) {
 								line->cl_NotUntil = t2 - t2 % 60 + line->cl_Delay; /* save what minute this job was scheduled/started waiting, plus cl_Delay */
+							}
 							nJobs += ArmJob(file, line, t1, t2);
 						}
 					}
@@ -1071,10 +1127,10 @@ ArmJob(CronFile *file, CronLine *line, time_t t1, time_t t2)
 		waiter = line->cl_Waiters;
 		while (waiter != NULL) {
 			/* check if notifier will run <= t2 + cw_Max_Wait? */
-			if (!waiter->cw_NotifLine)
+			if (!waiter->cw_NotifLine) {
 				/* notifier deleted */
 				waiter->cw_Flag = 0;
-			else if (waiter->cw_NotifLine->cl_Pid != JOB_NONE) {
+			} else if (waiter->cw_NotifLine->cl_Pid != JOB_NONE) {
 				/* if notifier is armed, or waiting, or running, we wait for it */
 				waiter->cw_Flag = -1;
 				line->cl_Pid = JOB_WAITING;
@@ -1085,10 +1141,10 @@ ArmJob(CronFile *file, CronLine *line, time_t t1, time_t t2)
 				line->cl_Pid = JOB_WAITING;
 			} else {
 				time_t t;
-				if (waiter->cw_MaxWait == 0)
+				if (waiter->cw_MaxWait == 0) {
 					/* when no MaxWait interval specified, we always wait */
 					waiter->cw_Flag = -1;
-				else if (waiter->cw_NotifLine->cl_Freq == 0 || (waiter->cw_NotifLine->cl_Freq > 0 && t2 + waiter->cw_MaxWait >= waiter->cw_NotifLine->cl_NotUntil)) {
+				} else if (waiter->cw_NotifLine->cl_Freq == 0 || (waiter->cw_NotifLine->cl_Freq > 0 && t2 + waiter->cw_MaxWait >= waiter->cw_NotifLine->cl_NotUntil)) {
 					/* default is don't wait */
 					waiter->cw_Flag = 0;
 					for (t = t1 - t1 % 60; t <= t2; t += 60) {
@@ -1099,13 +1155,14 @@ ArmJob(CronFile *file, CronLine *line, time_t t1, time_t t2)
 							if (n_wday >= FOURTH_DOW) {
 								struct tm tnext = *tp;
 								tnext.tm_mday += 7;
-								if (mktime(&tnext) != (time_t)-1 && tnext.tm_mon != tp->tm_mon)
+								if (mktime(&tnext) != (time_t)-1 && tnext.tm_mon != tp->tm_mon) {
 									n_wday |= LAST_DOW;	/* last dow in month is always recognized as 6th */
+								}
 							}
-							if (line->cl_Mins[tp->tm_min] &&
-									line->cl_Hrs[tp->tm_hour] &&
-									(line->cl_Days[tp->tm_mday] && n_wday & line->cl_Dow[tp->tm_wday])
-							   ) {
+							if (line->cl_Mins[tp->tm_min]
+								&& line->cl_Hrs[tp->tm_hour]
+								&& (line->cl_Days[tp->tm_mday] && n_wday & line->cl_Dow[tp->tm_wday]))
+							{
 								/* notifier will run soon enough, we wait for it */
 								waiter->cw_Flag = -1;
 								line->cl_Pid = JOB_WAITING;
@@ -1120,17 +1177,19 @@ ArmJob(CronFile *file, CronLine *line, time_t t1, time_t t2)
 		if (line->cl_Pid == JOB_ARMED) {
 			/* job is ready to run */
 			file->cf_Ready = 1;
-			if (DebugOpt)
+			if (DebugOpt) {
 				printlogf(LOG_DEBUG, "scheduled: user %s %s\n",
 						file->cf_UserName,
 						line->cl_Description
 					);
+			}
 			return 1;
-		} else if (DebugOpt)
+		} else if (DebugOpt) {
 			printlogf(LOG_DEBUG, "waiting: user %s %s\n",
 					file->cf_UserName,
 					line->cl_Description
 				);
+		}
 	}
 	return 0;
 }
@@ -1146,16 +1205,18 @@ TestStartupJobs(void)
 	t1 = t1 - t1 % 60 + 60;
 
 	for (file = FileBase; file; file = file->cf_Next) {
-		if (DebugOpt)
+		if (DebugOpt) {
 			printlogf(LOG_DEBUG, "TestStartup for FILE %s/%s USER %s:\n",
 				file->cf_DPath, file->cf_FileName, file->cf_UserName);
+		}
 		for (line = file->cf_LineBase; line; line = line->cl_Next) {
 			struct CronWaiter *waiter;
 			if (DebugOpt) {
-				if (line->cl_JobName)
+				if (line->cl_JobName) {
 					printlogf(LOG_DEBUG, "    LINE %s JOB %s\n", line->cl_Shell, line->cl_JobName);
-				else
+				} else {
 					printlogf(LOG_DEBUG, "    LINE %s\n", line->cl_Shell);
+				}
 			}
 
 			if (line->cl_Freq == -1) {
@@ -1168,19 +1229,21 @@ TestStartupJobs(void)
 					waiter->cw_Flag = -1;
 					line->cl_Pid = JOB_WAITING;
 					/* we only arm @noauto jobs we're waiting on, not other @reboot jobs */
-					if (waiter->cw_NotifLine && waiter->cw_NotifLine->cl_Freq == -2)
+					if (waiter->cw_NotifLine && waiter->cw_NotifLine->cl_Freq == -2) {
 						ArmJob(file, waiter->cw_NotifLine, t1, t1+60);
+					}
 					waiter = waiter->cw_Next;
 				}
 				if (line->cl_Pid == JOB_ARMED) {
 					/* job is ready to run */
 					file->cf_Ready = 1;
 					++nJobs;
-					if (DebugOpt)
+					if (DebugOpt) {
 						printlogf(LOG_DEBUG, "    scheduled: %s\n", line->cl_Description);
-				} else if (DebugOpt)
+					}
+				} else if (DebugOpt) {
 					printlogf(LOG_DEBUG, "    waiting: %s\n", line->cl_Description);
-
+				}
 			}
 
 		} /* for line */
@@ -1210,11 +1273,12 @@ RunJobs(void)
 							line->cl_Pid,
 							line->cl_Description
 						);
-					if (line->cl_Pid < JOB_NONE)
+					if (line->cl_Pid < JOB_NONE) {
 						/* QUESTION how could this happen? RunJob will leave cl_Pid set to 0 or the actual pid */
 						file->cf_Ready = 1;
-					else if (line->cl_Pid > JOB_NONE)
+					} else if (line->cl_Pid > JOB_NONE) {
 						file->cf_Running = 1;
+					}
 				}
 			}
 		}
@@ -1247,10 +1311,11 @@ CheckJobs(void)
 					/* waitpid returns -1 for error, 0 if cl_Pid still running, cl_Pid if it's dead */
 
 					if (r < 0 || r == line->cl_Pid) {
-						if (r > 0 && WIFEXITED(status))
+						if (r > 0 && WIFEXITED(status)) {
 							status = WEXITSTATUS(status);
-						else
+						} else {
 							status = 1;
+						}
 						EndJob(file, line, status);
 
 					} else if (r == 0) {
@@ -1277,8 +1342,9 @@ void
 PrintLine(CronLine *line)
 {
 	int i;
-	if (!line)
+	if (!line) {
 		return;
+	}
 
 	printlogf(LOG_DEBUG, "CronLine:\n------------\n");
 	printlogf(LOG_DEBUG, "  Command: %s\n", line->cl_Shell);
@@ -1288,24 +1354,29 @@ PrintLine(CronLine *line)
 	printlogf(LOG_DEBUG, "  PID:     %d\n", line->cl_Pid);
 
 	printlogf(LOG_DEBUG, "  Mins:    ");
-	for (i = 0; i < 60; ++i)
+	for (i = 0; i < 60; ++i) {
 		printlogf(LOG_DEBUG, "%d", line->cl_Mins[i]);
+	}
 
 	printlogf(LOG_DEBUG, "\n  Hrs:     ");
-	for (i = 0; i < 24; ++i)
+	for (i = 0; i < 24; ++i) {
 		printlogf(LOG_DEBUG, "%d", line->cl_Hrs[i]);
+	}
 
 	printlogf(LOG_DEBUG, "\n  Days:    ");
-	for (i = 0; i < 32; ++i)
+	for (i = 0; i < 32; ++i) {
 		printlogf(LOG_DEBUG, "%d", line->cl_Days[i]);
+	}
 
 	printlogf(LOG_DEBUG, "\n  Mons:    ");
-	for (i = 0; i < 12; ++i)
+	for (i = 0; i < 12; ++i) {
 		printlogf(LOG_DEBUG, "%d", line->cl_Mons[i]);
+	}
 
 	printlogf(LOG_DEBUG, "\n  Dow:     ");
-	for (i = 0; i < 7; ++i)
+	for (i = 0; i < 7; ++i) {
 		printlogf(LOG_DEBUG, "%02x ", line->cl_Dow[i]);
+	}
 	printlogf(LOG_DEBUG, "\n\n");
 }
 
@@ -1317,8 +1388,9 @@ PrintFile(CronFile *file, char* loc, char* fname, int line)
 
 	printlogf(LOG_DEBUG, "%s %s:%d\n", loc, fname, line);
 
-	if (!file)
+	if (!file) {
 		return;
+	}
 
 	f = file;
 	while (f) {

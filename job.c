@@ -282,7 +282,8 @@ EndJob(CronFile *file, CronLine *line, int exit_status)
 			sbuf.st_nlink != 0 ||
 			sbuf.st_size == line->cl_MailPos ||
 			!S_ISREG(sbuf.st_mode)
-	   ) {
+		)
+	{
 		close(mailFd);
 		return;
 	}

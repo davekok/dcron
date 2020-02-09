@@ -14,6 +14,7 @@ Prototype void fdprintlogf(int level, int fd, const char *ctl, ...);
 Prototype void fdprintf(int fd, const char *ctl, ...);
 Prototype void initsignals(void);
 Prototype char Hostname[SMALL_BUFFER];
+Prototype short Quit;
 
 void vlog(int level, int fd, const char *ctl, va_list va);
 
@@ -87,20 +88,23 @@ vlog(int level, int fd, const char *ctl, va_list va)
 				char hdr[SMALL_BUFFER];
 				/* strftime returns strlen of result, provided that result plus a \0 fit into buf of size */
 				if (strftime(hdr, sizeof(hdr), LogHeader, tp)) {
-					if (gethostname(Hostname, sizeof(Hostname))==0)
+					if (gethostname(Hostname, sizeof(Hostname))==0) {
 						/* gethostname successful */
 						/* result will be \0-terminated except gethostname doesn't promise to do so if it has to truncate */
 						Hostname[sizeof(Hostname)-1] = 0;
-					else
+					} else {
 						Hostname[0] = 0;   /* gethostname() call failed */
+					}
 					/* [v]snprintf write at most size including \0; they'll null-terminate, even when they truncate */
 					/* return value >= size means result was truncated */
-					if ((hdrlen = snprintf(buf, sizeof(hdr), hdr, Hostname)) >= sizeof(hdr))
+					if ((hdrlen = snprintf(buf, sizeof(hdr), hdr, Hostname)) >= sizeof(hdr)) {
 						hdrlen = sizeof(hdr) - 1;
+					}
 				}
 			}
-			if ((buflen = vsnprintf(buf + hdrlen, sizeof(buf) - hdrlen, ctl, va) + hdrlen) >= sizeof(buf))
+			if ((buflen = vsnprintf(buf + hdrlen, sizeof(buf) - hdrlen, ctl, va) + hdrlen) >= sizeof(buf)) {
 				buflen = sizeof(buf) - 1;
+			}
 
 			write(fd, buf, buflen);
 			/* if previous write wasn't \n-terminated, we suppress header on next write */
@@ -110,7 +114,9 @@ vlog(int level, int fd, const char *ctl, va_list va)
 	}
 }
 
-void reopenlogger(int sig) {
+void
+reopenlogger(int sig)
+{
 	int fd;
 	if (getpid() == DaemonPid) {
 		/* only daemon handles, children should ignore */
@@ -123,7 +129,9 @@ void reopenlogger(int sig) {
 	}
 }
 
-void waitmailjob(int sig) {
+void
+waitmailjob(int sig)
+{
 	/*
 	 * Wait for any children in our process group.
 	 * These will all be mailjobs.
@@ -138,12 +146,15 @@ void waitmailjob(int sig) {
 	/* if all children still running, child == 0 */
 }
 
-void quit(int sig) {
+void
+quit(int sig)
+{
 	Quit = 1;
 }
 
 void
-initsignals (void) {
+initsignals (void)
+{
 	struct sigaction sa;
 	int n;
 
@@ -152,10 +163,11 @@ initsignals (void) {
 
 	/* restart any system calls that were interrupted by signal */
 	sa.sa_flags = SA_RESTART;
-	if (!ForegroundOpt && !SyslogOpt)
+	if (!ForegroundOpt && !SyslogOpt) {
 		sa.sa_handler = reopenlogger;
-	else
+	} else {
 		sa.sa_handler = SIG_IGN;
+	}
 	if (sigaction (SIGHUP, &sa, NULL) != 0) {
 		n = errno;
 		fdprintf(2, "failed to start SIGHUP handling, reason: %s", strerror(errno));
