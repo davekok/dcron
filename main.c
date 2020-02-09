@@ -401,10 +401,11 @@ main(int ac, char **av)
 				TestJobs(t1, t2);
 				RunJobs();
 				sleep(5);
-				if (CheckJobs() > 0)
+				if (CheckJobs() > 0) {
 					stime = 10;
-				else
+				} else {
 					stime = 60;
+				}
 				t1 = t2;
 			}
 		}
